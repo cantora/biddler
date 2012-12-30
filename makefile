@@ -21,10 +21,10 @@ BUNDLE_DIR		= $(NAME).mxo/Contents
 
 
 $(BUNDLE_DIR)/MacOS/$(NAME): $(NAME).o clock.o $(DEF).def $(BUNDLE_DIR)/MacOS Info.plist
-	$(COMPILER) -o $@ $(OSX_FRAMEWORK) $(FRAMEWORKS) $(COMMON_FLAGS) $(LINK_FLAGS) $(NAME).o clock.o $(NAME).def
+	$(COMPILER) -o $@ $(OSX_FRAMEWORK) $(FRAMEWORKS) $(COMMON_FLAGS)  clock.o $(LINK_FLAGS) $(NAME).o $(DEF).def
 
 clock.o: clock.c
-	$(COMPILER) $(COMMON_FLAGS) $(COMPILE_FLAGS) $(INCLUDE) -c $< -o $@
+	$(COMPILER) $(OSX_FRAMEWORK) $(COMMON_FLAGS) $(COMPILE_FLAGS) $(INCLUDE) -c $< -o $@
 
 $(NAME).o: $(NAME).c
 	$(COMPILER) $(OSX_FRAMEWORK) $(COMMON_FLAGS) $(COMPILE_FLAGS) $(INCLUDE) -c $< -o $@
