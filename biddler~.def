@@ -1,0 +1,6 @@
+;plus~.def
+
+LIBRARY plus~
+
+EXPORTS
+	main
