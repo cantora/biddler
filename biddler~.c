@@ -128,21 +128,15 @@ void biddler_dsp(t_biddler *x, t_signal **sp) {
 
 t_int *biddler_perform( t_int *w ) {
 
-	// inlet signal vector location
+	// inlet signal vector locations
 	t_float *in			= (t_float *)(w[1 + SIG_INDEX]);
-	// inlet signal vector location
-	//t_float *retrig		= (t_float *)(w[1 + RETRIGGER]);		
-	// outlet signal vector location
+	t_float *retrig		= (t_float *)(w[1 + RETRIGGER]);		
+	// outlet signal vector locations
 	t_float *out0		= (t_float *)(w[1 + NUM_SIG_INLETS+OUT_L]);		
-	// outlet signal vector location
 	t_float *out1 		= (t_float *)(w[1 + NUM_SIG_INLETS+OUT_R]);		
-	// outlet signal vector location
 	t_float *pos_out 	= (t_float *)(w[1 + NUM_SIG_INLETS+POS_OUT]);		
-	// outlet signal vector location
 	t_float *total_pos_out 	= (t_float *)(w[1 + NUM_SIG_INLETS+TOTAL_POS_OUT]);		
-	// outlet signal vector location
 	t_float *beat_clock_out = (t_float *)(w[1 + NUM_SIG_INLETS+BEAT_CLOCK_OUT]);	
-	// outlet signal vector location	
 	t_float *song_pos_out 	= (t_float *)(w[1 + NUM_SIG_INLETS+SONG_POS_OUT]);		
 	
 	// always return w plus one more than the 2nd argument
@@ -152,43 +146,40 @@ t_int *biddler_perform( t_int *w ) {
 	int n			= (int)(w[DSP_ADD_2_ARG-1]);			
 	// biddler struct location
 	t_biddler *x	= (t_biddler *)(w[DSP_ADD_2_ARG]);		
-	bool zero = false;
-	
+	float *buffer;
+    float x_read_coeff;
+	clock_flag flag;
+    float index_coeff;
+    float song_pos_coeff;
+
 	if( x->l_obj.z_disabled ) // if object is disabled
 		return ret_val;
-	if( !x->l_buf )	// if no buffer
-		zero = true;			
-	if(x->l_buf == (void *)0xbaadf00d)
-		zero = true;
-	if( !x->l_buf->b_valid ) // if invalid buffer
-		zero = true;
+	if( !x->l_buf || x->l_buf == (void *)0xbaadf00d )
+		goto zero;		
+	if(!x->l_buf->b_valid ) // if invalid buffer
+		goto zero;
 
 	// remember inuse state
     x->saveinuse		= x->l_buf->b_inuse;
 	// set inuse to true for dsp block
 	x->l_buf->b_inuse	= true;
 	// address of buffer samples
-	float *buffer		= x->l_buf->b_samples;			
+	buffer 				= x->l_buf->b_samples;			
     
-    float x_read_coeff = 1.0f/(x->l_buf->b_frames*x->l_buf->b_nchans);
-	clock_flag flag = CLOCK_OK;
-    float index_coeff = (1.0f/x->slice_n);
-    
-    float song_pos_coeff = 1.0f/((float)x->l_buf->b_frames)*x->b_list->size();
+    x_read_coeff = 1.0f/(x->l_buf->b_frames*x->l_buf->b_nchans);
+	flag = CLOCK_OK;
+    index_coeff = (1.0f/x->slice_n);
+    song_pos_coeff = 1.0f/( ((float)x->l_buf->b_frames)*x->b_list->size() );
 
 	/* ====== DSP stuff ===== */
 	if( (x->l_buf->b_nchans < 1)||(x->l_buf->b_nchans > 2) )
-		zero = true;
+		goto zero;
 	else if(x->b_list->size() < 1)
-		zero = true;
+		goto zero;
 
 	if(x->go == false)
-		zero = true;
+		goto zero;
 
-	if(zero) {
-		while ( n-- ) (*out0++) = (*out1++) = (*pos_out++) = 0.;
-		return ret_val;
-	}
 	while( n-- ) { // while decrementing vector exists...
 		(*pos_out++) = x->read*x_read_coeff;
 		(*total_pos_out++) = clock_count(&x->measure_clock) \
@@ -249,9 +240,14 @@ t_int *biddler_perform( t_int *w ) {
 	x->l_buf->b_inuse = x->saveinuse;			// restore inuse state
 	
 	return ret_val;
+
+zero:
+	while ( n-- ) (*out0++) = (*out1++) = (*pos_out++) = 0.;
+	return ret_val;
 }
 
 void *biddler_new( t_symbol *s, long chan ) {
+	post("biddler_new");
 	t_biddler *x = (t_biddler *)newobject( biddler_class );
 	
 	clock_init(&x->q_clock);
@@ -306,6 +302,7 @@ void biddler_free( t_biddler *x ) {
 
 void biddler_add( t_biddler *x, t_symbol *s ) { // sets the buffer~ to access
 	t_buffer *b;					// pointer to a buffer
+	post("added buffer");
 	//x->l_sym = s;					// store name of buffer
 	if(x->filter)
 		if( std::string(x->filter->s_name) == std::string(s->s_name) )

@@ -14,9 +14,11 @@ COMPILER		= g++
 INCLUDE			= -I$(MAX_SDK_HOME)/max-includes/ \
 					-I$(MAX_SDK_HOME)/msp-includes/ \
 					-include $(MAX_SDK_HOME)/max-includes/macho-prefix.h
+#OPTIMIZE		= -Os
+OPTIMIZE		= -ggdb
 COMPILE_FLAGS	= -pipe -Wno-trigraphs -fpascal-strings -fasm-blocks \
-					-Os -fmessage-length=0 -Wmost -Wno-four-char-constants \
-					-Wno-unknown-pragmas
+					-fmessage-length=0 -Wmost -Wno-four-char-constants \
+					-Wno-unknown-pragmas $(OPTIMIZE)
 BUNDLE_DIR		= $(NAME).mxo/Contents
 
 
