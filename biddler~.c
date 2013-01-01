@@ -130,7 +130,6 @@ t_int *biddler_perform( t_int *w ) {
 
 	// inlet signal vector locations
 	t_float *in			= (t_float *)(w[1 + SIG_INDEX]);
-	t_float *retrig		= (t_float *)(w[1 + RETRIGGER]);		
 	// outlet signal vector locations
 	t_float *out0		= (t_float *)(w[1 + NUM_SIG_INLETS+OUT_L]);		
 	t_float *out1 		= (t_float *)(w[1 + NUM_SIG_INLETS+OUT_R]);		
@@ -399,19 +398,22 @@ void biddler_assist( t_biddler *x, void *b, long m, long a, char *s ) {
 	else {						// 2 = outlets
 		switch (a) {				// outlet number switch
 		case 0:				// outlet 0
-			sprintf(s, "(signal) biddler~ Output L");
+			sprintf(s, "(signal) Output L");
 			break;			// assist message
-		case 1:				// outlet 0
-			sprintf(s, "(signal) biddler~ Output R");
+		case 1:
+			sprintf(s, "(signal) Output R");
 			break;			// assist message
-		case 2:				// outlet 0
-			sprintf(s, "(signal) biddler~ slice position within measure");
+		case 2:
+			sprintf(s, "(signal) slice position within measure");
 			break;			// assist message
-		case 3:				// outlet 0
-			sprintf(s, "(signal) biddler~ position within measure");
+		case 3:
+			sprintf(s, "(signal) position within measure");
 			break;			// assist message
 		case 4:
-			sprintf(s, "(signal) biddler~ song position index");
+			sprintf(s, "(signal) beat clock");
+			break;			// assist message
+		case 5:
+			sprintf(s, "(signal) song position");
 			break;			// assist message
 		default:
 			break;

@@ -31,13 +31,13 @@ clock.o: clock.c
 $(NAME).o: $(NAME).c
 	$(COMPILER) $(OSX_FRAMEWORK) $(COMMON_FLAGS) $(COMPILE_FLAGS) $(INCLUDE) -c $< -o $@
 
-Info.plist: $(BUNDLE_DIR)/MacOS
-	cp ./Info.plist $(BUNDLE_DIR)/Info.plist
+$(BUNDLE_DIR)/Info.plist: $(BUNDLE_DIR)/MacOS
+	cp ./Info.plist $@
 
 $(BUNDLE_DIR)/MacOS:
 	mkdir -p $(BUNDLE_DIR)/MacOS
 
-install: 
+install: $(BUNDLE_DIR)/MacOS/$(NAME) $(BUNDLE_DIR)/Info.plist
 	cp -r -i $(NAME).mxo/ $(INSTALL_DIR)/$(NAME).mxo
 
 clean:
