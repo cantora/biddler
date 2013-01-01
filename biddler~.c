@@ -185,7 +185,7 @@ t_int *biddler_perform( t_int *w ) {
 				/ ( (float) clock_time(&x->measure_clock) );
 		(*song_pos_out++) = (
 				(x->measure_index*x->l_buf->b_frames)
-				+ (clock_count(&x->measure_clock)*0.5f) 
+				+ clock_count(&x->measure_clock)
 			) * song_pos_coeff;
 		(*beat_clock_out++) = (float) clock_count(&x->beat_clock);
             
