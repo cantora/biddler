@@ -28,7 +28,7 @@ $(BUNDLE_DIR)/MacOS/$(NAME): $(NAME).o clock.o $(DEF).def $(BUNDLE_DIR)/MacOS In
 clock.o: clock.c
 	$(COMPILER) $(OSX_FRAMEWORK) $(COMMON_FLAGS) $(COMPILE_FLAGS) $(INCLUDE) -c $< -o $@
 
-$(NAME).o: $(NAME).c
+$(NAME).o: $(NAME).cc
 	$(COMPILER) $(OSX_FRAMEWORK) $(COMMON_FLAGS) $(COMPILE_FLAGS) $(INCLUDE) -c $< -o $@
 
 $(BUNDLE_DIR)/Info.plist: $(BUNDLE_DIR)/MacOS
