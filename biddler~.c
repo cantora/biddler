@@ -16,10 +16,7 @@ typedef struct _biddler				// biddler data structure
 	t_symbol	*l_sym;			// symbol struct
 	t_symbol    *filter;
 	t_buffer	*l_buf;			// buffer struct
-	//unsigned long		channel;		// which channel?
 	unsigned long		index;			// buffer index
-	//unsigned long		frames;			// number of frames in buffer
-	//unsigned long		num_chans;		// number of channels in buffer
 	unsigned long		saveinuse;		// save state of buffer
 
 	unsigned long slice_n;
@@ -45,8 +42,6 @@ enum inlets {
 	SLICE_N,
 	QUANT_N,
 	JUMP,
-	TEMPO,
-	TIMEBASE,
 	INLET_AMT
 };
 
@@ -74,8 +69,6 @@ void biddler_add( t_biddler *x, t_symbol *s );		// 'set' message handler
 void set_slice_n(t_biddler *x, long val);
 void set_quant_n(t_biddler *x, long val);
 void set_jump(t_biddler *x, long val);
-void set_tempo_float(t_biddler *x, float val);
-void set_timebase(t_biddler *x, long val);
 void bang(t_biddler *x);
 void increment_buffer(t_biddler *x);
 void biddler_follow(t_biddler *x, long n );
@@ -91,8 +84,6 @@ int main(void) {
 	addmess( (method)biddler_go, "go", A_LONG, 0 );		// 
 	addmess( (method)biddler_reset_position, "reset_position", A_NOTHING, 0 );
 	
-	addinx((method)set_timebase, TIMEBASE);
-	addftx((method)set_tempo_float, TEMPO);
 	addinx((method)set_jump, JUMP);
 	addinx((method)set_quant_n, QUANT_N);
 	addinx((method)set_slice_n, SLICE_N);
@@ -254,8 +245,6 @@ void *biddler_new( t_symbol *s, long chan ) {
 	clock_init(&x->beat_clock);
 	x->b_list = new std::list<t_symbol *>;
 	x->current = new std::list<t_symbol *>::iterator;
-	intin( (t_object *)x, TIMEBASE );
-	floatin( (t_object *)x, TEMPO );
 	intin( (t_object *)x, JUMP );
 	intin( (t_object *)x, QUANT_N );
 	intin( (t_object *)x, SLICE_N );
@@ -269,12 +258,6 @@ void *biddler_new( t_symbol *s, long chan ) {
 	outlet_new((t_pxobject *)x, "signal");
 	x->l_sym = s;					// store buffer name argument
 	x->filter = NULL;
-
-/*    
-    x->bpm = 120;
-      x->tempo = 120;
-    x->timebase = 0;
-*/
 
 	x->read = 0;
 	x->retrigger = true;
@@ -385,12 +368,6 @@ void biddler_assist( t_biddler *x, void *b, long m, long a, char *s ) {
 		case JUMP:
 			sprintf(s, "(int) jump measure. negative goes backward. positive goes forward.");
 			break;
-		case TEMPO: 
-			sprintf(s, "(float) tempo");
-			break;    
-		case TIMEBASE:
-			sprintf(s, "(int) timebase");
-			break;
 		default:
 			break;
 		}
@@ -479,16 +456,6 @@ void set_quant_n(t_biddler *x, long val) {
 
 void set_jump(t_biddler *x, long val) {
 	x->measure_index_offset = val;
-}
-void set_tempo_float(t_biddler *x, float val) {
-	//x->tempo = val;
-}
-
-void set_timebase(t_biddler *x, long val) {
-	//x->timebase = val;
-}
-void set_bpm(t_biddler *x, long val) {
-	//x->bpm = 0;
 }
 
 void bang(t_biddler *x) {
