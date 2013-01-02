@@ -59,10 +59,9 @@ void biddler_reset_state(t_biddler *x);
 void biddler_free( t_biddler *x );			// deletes biddler~
 void biddler_dsp (t_biddler *x, t_signal **sp );	// sets dsp for biddler~
 t_int *biddler_perform( t_int *w );			// biddler dsp perform
-//void biddler_dblclick( t_biddler *x );			// double-click handler
 void biddler_assist( t_biddler *x, void *b, long m, long a, char *s );
 void biddler_add( t_biddler *x, t_symbol *s );		// 'set' message handler
-//void biddler_clear( t_biddler *x);
+void biddler_clear( t_biddler *x);
 
 void set_slice_n(t_biddler *x, long val);
 void set_quant_n(t_biddler *x, long val);
@@ -78,7 +77,7 @@ int main(void) {
 		(short)sizeof(t_biddler), 0L, 0 );
 	addmess( (method)biddler_dsp, "dsp", A_CANT, 0 );	
 	addmess( (method)biddler_add, "add", A_SYM, 0 );	
-	//addmess( (method)biddler_clear, "clear", A_NOTHING, 0 );	
+	addmess( (method)biddler_clear, "clear", A_NOTHING, 0 );	
 	addmess( (method)biddler_follow, "follow", A_LONG, 0 );		
 	addmess( (method)biddler_go, "go", A_LONG, 0 );		// 
 	addmess( (method)biddler_reset_position, "reset_position", A_NOTHING, 0 );
@@ -89,7 +88,6 @@ int main(void) {
 	
 	addbang((method)bang);
 	addmess( (method)biddler_assist, "assist", A_CANT, 0 );	// add assist method
-	//addmess( (method)biddler_dblclick, "dblclick", A_CANT, 0 );	// add double-click method
 	dsp_initclass();						// init the class
 	ps_buffer = gensym( "buffer~" );				// store a 'buffer~' symbol
 	post("biddler~ : performance tool for glitch addicts. written by anthony cantor in 2007. inspired by cooper baker's cuisanart");
@@ -156,10 +154,9 @@ t_int *biddler_perform( t_int *w ) {
 	clock_flag flag;
 	float index_coeff;
 	unsigned long savedinuse;
+	float song_pos_coeff;
 
 	static float x_read_coeff;
-	static float song_pos_coeff;
-	
 	static t_buffer *buffer = NULL;
 
 	// inlet signal vector locations
@@ -222,7 +219,6 @@ t_int *biddler_perform( t_int *w ) {
 			x->read = 0;
 			x_read_coeff = 1.0f/(buffer->b_frames*buffer->b_nchans);
 			/* we assume that all buffers in the list are the same size */
-			song_pos_coeff = 1.0f/( ((float)buffer->b_frames)*x->sym_arr->size() );
 			x->reset_buffer = 0;
 		}
 
@@ -234,10 +230,13 @@ t_int *biddler_perform( t_int *w ) {
 		(*pos_out++) = x->read*x_read_coeff;
 		(*total_pos_out++) = clock_count(&x->measure_clock) \
 				/ ( (float) clock_time(&x->measure_clock) );
+
+		song_pos_coeff = 1.0f/( ((float)buffer->b_frames)*x->sym_arr->size() );
 		(*song_pos_out++) = (
 				(x->measure_index*buffer->b_frames)
 				+ clock_count(&x->measure_clock)
 			) * song_pos_coeff;
+
 		(*beat_clock_out++) = (float) clock_count(&x->beat_clock);
             
 		clock_process(&x->q_clock, &flag);
@@ -379,14 +378,14 @@ void biddler_add(t_biddler *x, t_symbol *s) { // sets the buffer~ to access
     }
 }
 
-/*void biddler_clear( t_biddler *x) {
+void biddler_clear( t_biddler *x) {
 	if(x->error)
 		return;
 
 	post("clear all buffers");
-	//biddler_reset_state(x);
+	biddler_reset_state(x);
 	x->sym_arr->clear();
-}*/
+}
 
 void biddler_follow(t_biddler *x, long n ) {
 	if(n < 1)
