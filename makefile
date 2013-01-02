@@ -17,7 +17,7 @@ INCLUDE			= -I$(MAX_SDK_HOME)/max-includes/ \
 #OPTIMIZE		= -Os
 OPTIMIZE		= -ggdb
 COMPILE_FLAGS	= -pipe -Wno-trigraphs -fpascal-strings -fasm-blocks \
-					-fmessage-length=0 -Wmost -Wno-four-char-constants \
+					-fmessage-length=0 -Wall -Wextra -Wno-four-char-constants \
 					-Wno-unknown-pragmas $(OPTIMIZE)
 BUNDLE_DIR		= $(NAME).mxo/Contents
 
