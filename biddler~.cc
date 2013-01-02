@@ -31,8 +31,8 @@ typedef struct _biddler				// biddler data structure
 	struct clock measure_clock;
 	struct clock beat_clock;
 	
-	std::list<t_symbol *> *b_list;
-	std::list<t_symbol *>::iterator *current;
+	std::list<t_symbol *> b_list;
+	std::list<t_symbol *>::iterator current;
    
 } t_biddler;
 
@@ -57,6 +57,7 @@ enum outlets {
 };
 
 void *biddler_new(t_symbol *s, long chan );		// makes a new biddler~
+static void biddler_reset_state(t_biddler *x);
 void biddler_free( t_biddler *x );			// deletes biddler~
 void biddler_dsp (t_biddler *x, t_signal **sp );	// sets dsp for biddler~
 t_int *biddler_perform( t_int *w );			// biddler dsp perform
@@ -159,12 +160,12 @@ t_int *biddler_perform( t_int *w ) {
     x_read_coeff = 1.0f/(x->l_buf->b_frames*x->l_buf->b_nchans);
 	flag = CLOCK_OK;
     index_coeff = (1.0f/x->slice_n);
-    song_pos_coeff = 1.0f/( ((float)x->l_buf->b_frames)*x->b_list->size() );
+    song_pos_coeff = 1.0f/( ((float)x->l_buf->b_frames)*x->b_list.size() );
 
 	/* ====== DSP stuff ===== */
 	if( (x->l_buf->b_nchans < 1)||(x->l_buf->b_nchans > 2) )
 		goto zero;
-	else if(x->b_list->size() < 1)
+	else if(x->b_list.size() < 1)
 		goto zero;
 
 	if(x->go == false)
@@ -240,11 +241,6 @@ void *biddler_new( t_symbol *s, long chan ) {
 	post("biddler_new");
 	t_biddler *x = (t_biddler *)newobject( biddler_class );
 	
-	clock_init(&x->q_clock);
-	clock_init(&x->measure_clock);
-	clock_init(&x->beat_clock);
-	x->b_list = new std::list<t_symbol *>;
-	x->current = new std::list<t_symbol *>::iterator;
 	intin( (t_object *)x, JUMP );
 	intin( (t_object *)x, QUANT_N );
 	intin( (t_object *)x, SLICE_N );
@@ -256,29 +252,33 @@ void *biddler_new( t_symbol *s, long chan ) {
 	outlet_new((t_pxobject *)x, "signal");
 	outlet_new((t_pxobject *)x, "signal");
 	outlet_new((t_pxobject *)x, "signal");
-	x->l_sym = s;					// store buffer name argument
+	
+	clock_init(&x->q_clock);
+	clock_init(&x->measure_clock);
+	clock_init(&x->beat_clock);
+	x->quant_n = 16;
+	x->slice_n = 8;
+	clock_set_time(&x->beat_clock, x->quant_n);
+	x->follow = false;
+	x->go = true;
+
+	biddler_reset_state(x);
+
+	return x;
+}
+
+static void biddler_reset_state(t_biddler *x) {
 	x->filter = NULL;
 
 	x->read = 0;
 	x->retrigger = true;
-	x->quant_n = 16;
-	x->measure_index = 0;
 	x->read = 0;
-	x->slice_n = 8;
-	x->measure_index_offset = 0;
-	clock_set_time(&x->beat_clock, x->quant_n);
 	x->l_buf = NULL;
 	x->l_sym = NULL;
-	x->follow = false;
-	x->go = true;
-	return x;
+	biddler_reset_position(x);
 }
 
 void biddler_free( t_biddler *x ) {
-	if(x->b_list)
-		delete x->b_list;
-	if(x->current)
-		delete x->current;
 	dsp_free( (t_pxobject *)x );			// msp free function
 }
 
@@ -290,12 +290,12 @@ void biddler_add( t_biddler *x, t_symbol *s ) { // sets the buffer~ to access
 			return;
 
     if ( ( b = (t_buffer *)( s->s_thing ) ) && ( ob_sym( b ) == ps_buffer ) ) { // if buffer is valid
-		x->b_list->push_back(s);
-		if(x->b_list->size() == 1) {
+		x->b_list.push_back(s);
+		if(x->b_list.size() == 1) {
 			x->l_buf = b;
 			x->l_sym = s;
 			x->filter = s;
-			*x->current = x->b_list->begin();
+			x->current = x->b_list.begin();
 			
 			clock_set_time(&x->measure_clock, x->l_buf->b_frames);
 			clock_reset(&x->measure_clock);
@@ -311,7 +311,8 @@ void biddler_add( t_biddler *x, t_symbol *s ) { // sets the buffer~ to access
 
 /*void biddler_clear( t_biddler *x) {
 	post("clear all buffers");
-	x->b_list->clear();
+	//biddler_reset_state(x);
+	x->b_list.clear();
 }*/
 
 void biddler_follow(t_biddler *x, long n ) {
@@ -329,20 +330,21 @@ void biddler_go(t_biddler *x, long n ) {
 }
 
 void biddler_reset_position(t_biddler *x) {
-	if((*x->current) == NULL)
-		return;
-	(*x->current) = x->b_list->begin();
 	x->measure_index = 0;
-	
-	x->l_sym = *(*x->current);
-	if(x->l_sym->s_thing) {
-		x->l_buf = (t_buffer *)( x->l_sym->s_thing );
-		clock_set_time(&x->measure_clock, x->l_buf->b_frames);
-		clock_reset(&x->measure_clock);
-		clock_set_time(&x->q_clock, x->l_buf->b_frames/x->quant_n);
-		clock_reset(&x->q_clock);
+
+	x->current = x->b_list.begin();
+	if(x->current != x->b_list.end() ) {
+		x->l_sym = *x->current;
+		if(x->l_sym->s_thing) {
+			x->l_buf = (t_buffer *)( x->l_sym->s_thing );
+			clock_set_time(&x->measure_clock, x->l_buf->b_frames);
+			clock_set_time(&x->q_clock, x->l_buf->b_frames/x->quant_n);
+		}
 	}
 
+	clock_reset(&x->measure_clock);
+	clock_reset(&x->q_clock);
+	clock_reset(&x->beat_clock);
 	x->measure_index_offset = 1;
 }
 
@@ -405,36 +407,38 @@ void biddler_assist( t_biddler *x, void *b, long m, long a, char *s ) {
 
 void increment_buffer(t_biddler *x) {
 	//todo: check for bad ptrs so we can handle the disappearance of buffers
-	
+
 	for(int i = 0; i < abs(x->measure_index_offset); i++) {
-        if(x->measure_index_offset >= 0) {
-			(*x->current)++;    
+		if(x->measure_index_offset >= 0) {
+			x->current++;
 			x->measure_index++;
 		}
         else {
-			(*x->current)--;    
+			x->current--;
 			x->measure_index--; 
 		}
 
-        if( (*x->current) == x->b_list->end() ) {
-			(*x->current) = x->b_list->begin();
+        if( x->current == x->b_list.end() ) {
+			x->current = x->b_list.begin();
 			x->measure_index = 0;
 			break;
 		}
-		if( ((x->measure_index) >= x->b_list->size()) || (x->measure_index < 0 ) ) {
-			(*x->current) = x->b_list->begin();
+		if( ((x->measure_index) >= x->b_list.size()) || (x->measure_index < 0 ) ) {
+			x->current = x->b_list.begin();
 			x->measure_index = 0;
 		}
     
 	} /* for */
 
-	x->l_sym = *(*x->current);
-	x->l_buf = (t_buffer *)( x->l_sym->s_thing );
-	clock_set_time(&x->measure_clock, x->l_buf->b_frames);
-	clock_reset(&x->measure_clock);
-	clock_set_time(&x->q_clock, x->l_buf->b_frames/x->quant_n);
-	clock_reset(&x->q_clock);
-	x->measure_index_offset = 1;
+	if(x->current != x->b_list.end()) {
+		x->l_sym = *x->current;
+		x->l_buf = (t_buffer *)( x->l_sym->s_thing );
+		clock_set_time(&x->measure_clock, x->l_buf->b_frames);
+		clock_reset(&x->measure_clock);
+		clock_set_time(&x->q_clock, x->l_buf->b_frames/x->quant_n);
+		clock_reset(&x->q_clock);
+		x->measure_index_offset = 1;
+	}
 }
 
 void set_slice_n(t_biddler *x, long val) {
