@@ -56,8 +56,6 @@ enum outlets {
 	SONG_POS_OUT
 };
 
-#define NUM_SIG_OUTLETS 3
-
 void *biddler_new(t_symbol *s, long chan );		// makes a new biddler~
 void biddler_free( t_biddler *x );			// deletes biddler~
 void biddler_dsp (t_biddler *x, t_signal **sp );	// sets dsp for biddler~
@@ -65,6 +63,7 @@ t_int *biddler_perform( t_int *w );			// biddler dsp perform
 void biddler_dblclick( t_biddler *x );			// double-click handler
 void biddler_assist( t_biddler *x, void *b, long m, long a, char *s );
 void biddler_add( t_biddler *x, t_symbol *s );		// 'set' message handler
+//void biddler_clear( t_biddler *x);
 
 void set_slice_n(t_biddler *x, long val);
 void set_quant_n(t_biddler *x, long val);
@@ -78,8 +77,9 @@ void biddler_reset_position(t_biddler *x);
 int main(void) {
 	setup( (t_messlist **)&biddler_class, (method)biddler_new, (method)biddler_free, 
 		(short)sizeof(t_biddler), 0L, 0 );
-	addmess( (method)biddler_dsp, "dsp", A_CANT, 0 );		// add dsp method
-	addmess( (method)biddler_add, "add", A_SYM, 0 );		// add 'set' method
+	addmess( (method)biddler_dsp, "dsp", A_CANT, 0 );	
+	addmess( (method)biddler_add, "add", A_SYM, 0 );	
+	//addmess( (method)biddler_clear, "clear", A_NOTHING, 0 );	
 	addmess( (method)biddler_follow, "follow", A_LONG, 0 );		
 	addmess( (method)biddler_go, "go", A_LONG, 0 );		// 
 	addmess( (method)biddler_reset_position, "reset_position", A_NOTHING, 0 );
@@ -284,8 +284,7 @@ void biddler_free( t_biddler *x ) {
 
 void biddler_add( t_biddler *x, t_symbol *s ) { // sets the buffer~ to access
 	t_buffer *b;					// pointer to a buffer
-	post("added buffer");
-	//x->l_sym = s;					// store name of buffer
+	post("add buffer");
 	if(x->filter)
 		if( std::string(x->filter->s_name) == std::string(s->s_name) )
 			return;
@@ -309,6 +308,11 @@ void biddler_add( t_biddler *x, t_symbol *s ) { // sets the buffer~ to access
 		//x->l_buf = 0;				// store null location	
     }
 }
+
+/*void biddler_clear( t_biddler *x) {
+	post("clear all buffers");
+	x->b_list->clear();
+}*/
 
 void biddler_follow(t_biddler *x, long n ) {
 	if(n < 1)
