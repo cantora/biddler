@@ -14,7 +14,7 @@ typedef struct _biddler				// biddler data structure
 {	
 	t_pxobject l_obj;			// object info struct
 
-	t_symbol *filter;
+	t_symbol *first_sym;
 
 	unsigned long slice_n;
 	unsigned long quant_n;
@@ -351,7 +351,7 @@ void biddler_error(t_biddler *x, char *s) {
 }
 
 void biddler_reset_state(t_biddler *x) {
-	x->filter = NULL;
+	x->first_sym = NULL;
 
 	x->retrigger = false;
 	x->read = 0;
@@ -365,14 +365,14 @@ void biddler_add( t_biddler *x, t_symbol *s ) { // sets the buffer~ to access
 		return;
 
 	post("add buffer");
-	if(x->filter)
-		if( std::string(x->filter->s_name) == std::string(s->s_name) )
+	if(x->first_sym)
+		if( std::string(x->first_sym->s_name) == std::string(s->s_name) )
 			return;
 
     if ( ( b = (t_buffer *)( s->s_thing ) ) && ( ob_sym( b ) == ps_buffer ) ) { // if buffer is valid
 		x->sym_arr->push_back(s);
 		if(x->sym_arr->size() == 1)
-			x->filter = s;
+			x->first_sym = s;
     }
 	else {
 		biddler_error(x, "biddler~: invalid buffer added");
