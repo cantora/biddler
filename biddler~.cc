@@ -27,9 +27,9 @@ typedef struct _biddler				// biddler data structure
 	struct clock q_clock;
 	struct clock measure_clock;
 	struct clock beat_clock;
-	
 	std::vector<t_symbol *> *sym_arr;
-   
+	int reset_buffer;   
+	int update_q_clock;	
 } t_biddler;
 
 enum inlets {
@@ -125,7 +125,7 @@ int current_buffer(t_biddler *x, t_buffer **buffer) {
 	if(sym == NULL)
 		error("biddler~: didnt expect sym to be null");
 
-	post("current_buffer: %s", sym->s_name);
+	//post("current_buffer: %s", sym->s_name);
 
 	*buffer = (t_buffer *)( sym->s_thing );
 	if( !(*buffer) || *buffer == (void *)0xbaadf00d \
@@ -173,9 +173,11 @@ t_int *biddler_perform( t_int *w ) {
 
 	if( x->l_obj.z_disabled ) // if object is disabled
 		return ret_val;
-	if(x->sym_arr->size() < 1	|| x->go == false)
+	if(x->sym_arr->size() < 1 || x->go == false) {
+		buffer = NULL;
 		goto zero;
-	
+	}
+
 	index_coeff = (1.0f/x->slice_n);
 #define SAVE_INUSE() \
 	do { \
@@ -184,7 +186,13 @@ t_int *biddler_perform( t_int *w ) {
 	} while(0)
 
 	if(buffer != NULL) {
-		SAVE_INUSE();
+		if(x->reset_buffer) {
+			buffer = NULL;
+			x->reset_buffer = 0;
+		}
+		else {
+			SAVE_INUSE();
+		}
 	}
 	/* ====== DSP stuff ===== */
 	while( n-- ) { // while decrementing vector exists...
@@ -203,9 +211,15 @@ t_int *biddler_perform( t_int *w ) {
 			clock_reset(&x->q_clock);
 
 			x->read = 0;
-			x_read_coeff = 1.0f/(buffer->b_frames*buffer->b_nchans); \
+			x_read_coeff = 1.0f/(buffer->b_frames*buffer->b_nchans);
 			/* we assume that all buffers in the list are the same size */
-			song_pos_coeff = 1.0f/( ((float)buffer->b_frames)*x->sym_arr->size() ); \
+			song_pos_coeff = 1.0f/( ((float)buffer->b_frames)*x->sym_arr->size() );
+			x->reset_buffer = 0;
+		}
+
+		if(x->update_q_clock) {
+			clock_set_time(&x->q_clock, buffer->b_frames/x->quant_n);
+			x->update_q_clock = 0;
 		}
 
 		(*pos_out++) = x->read*x_read_coeff;
@@ -263,7 +277,7 @@ t_int *biddler_perform( t_int *w ) {
 	/* === END DSP stuff ===== */
 
 	if(buffer) 
-		buffer->b_inuse = savedinuse;			// restore inuse state
+		buffer->b_inuse = savedinuse;
 	
 	return ret_val;
 zero:
@@ -306,6 +320,7 @@ void *biddler_new( t_symbol *s, long chan ) {
 	clock_set_time(&x->beat_clock, x->quant_n);
 	x->follow = false;
 	x->go = true;
+	x->update_q_clock = 0;
 
 	biddler_reset_state(x);
 
@@ -364,10 +379,10 @@ void biddler_go(t_biddler *x, long n ) {
 
 void biddler_reset_position(t_biddler *x) {
 	x->measure_index = 0;
-
 	clock_reset(&x->measure_clock);
 	clock_reset(&x->q_clock);
 	clock_reset(&x->beat_clock);
+	x->reset_buffer = 1;
 	x->measure_index_offset = 1;
 }
 
@@ -456,6 +471,7 @@ void set_quant_n(t_biddler *x, long val) {
 		x->quant_n = val;
     
 	clock_set_time(&x->beat_clock, val);
+	x->update_q_clock = 1;
 }
 
 void set_jump(t_biddler *x, long val) {
