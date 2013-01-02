@@ -180,9 +180,9 @@ t_int *biddler_perform( t_int *w ) {
 	// biddler struct location
 	x = (t_biddler *)(w[DSP_ADD_2_ARG]);		
 	
-	if( x->l_obj.z_disabled || x->error ) // if object is disabled
-		goto zero;
-	if(x->sym_arr->size() < 1 || x->go == false) {
+	if( x->l_obj.z_disabled || x->error \
+			|| x->sym_arr->size() < 1 \
+			|| x->go == false) {
 		buffer = NULL;
 		goto zero;
 	}
@@ -358,7 +358,7 @@ void biddler_reset_state(t_biddler *x) {
 	biddler_reset_position(x);
 }
 
-void biddler_add( t_biddler *x, t_symbol *s ) { // sets the buffer~ to access
+void biddler_add(t_biddler *x, t_symbol *s) { // sets the buffer~ to access
 	t_buffer *b;					// pointer to a buffer
 
 	if(x->error)
@@ -464,8 +464,6 @@ void biddler_assist( t_biddler *x, void *b, long m, long a, char *s ) {
 }
 
 void increment_buffer(t_biddler *x) {
-	//todo: check for bad ptrs so we can handle the disappearance of buffers
-
 	if(x->error)
 		return;
 
@@ -487,14 +485,15 @@ void increment_buffer(t_biddler *x) {
 }
 
 void set_slice_n(t_biddler *x, long val) {
-    x->slice_n = val;
+	if(val < 2)
+		x->slice_n = 2;
+	else
+		x->slice_n = val;
 }
 
 void set_quant_n(t_biddler *x, long val) {
-    if(val < 1) {
-		x->quant_n = 0;
-		return;
-	}
+    if(val < 2) 
+		x->quant_n = 2;
 	else
 		x->quant_n = val;
     
