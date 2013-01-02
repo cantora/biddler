@@ -30,6 +30,7 @@ typedef struct _biddler				// biddler data structure
 	std::vector<t_symbol *> *sym_arr;
 	int reset_buffer;   
 	int update_q_clock;	
+	int error;
 } t_biddler;
 
 enum inlets {
@@ -53,6 +54,7 @@ enum outlets {
 };
 
 void *biddler_new(t_symbol *s, long chan );		// makes a new biddler~
+void biddler_error(t_biddler *x, char *s);
 void biddler_reset_state(t_biddler *x);
 void biddler_free( t_biddler *x );			// deletes biddler~
 void biddler_dsp (t_biddler *x, t_signal **sp );	// sets dsp for biddler~
@@ -117,13 +119,20 @@ void biddler_dsp(t_biddler *x, t_signal **sp) {
 int current_buffer(t_biddler *x, t_buffer **buffer) {
 	t_symbol *sym;
 
+	if(x->error)
+		return -1;
+
 	if(x->measure_index >= (long) x->sym_arr->size() \
-			|| x->measure_index < 0 )
-		error("measure index overflow: %d", x->measure_index);
+			|| x->measure_index < 0 ) {
+		biddler_error(x, "measure index overflow");
+		return -1;
+	}
 
 	sym = (*x->sym_arr)[x->measure_index];
-	if(sym == NULL)
-		error("biddler~: didnt expect sym to be null");
+	if(sym == NULL) {
+		biddler_error(x, "biddler~: didnt expect sym to be null");
+		return -1;
+	}
 
 	//post("current_buffer: %s", sym->s_name);
 
@@ -170,9 +179,9 @@ t_int *biddler_perform( t_int *w ) {
 	n = (int)(w[DSP_ADD_2_ARG-1]);			
 	// biddler struct location
 	x = (t_biddler *)(w[DSP_ADD_2_ARG]);		
-
-	if( x->l_obj.z_disabled ) // if object is disabled
-		return ret_val;
+	
+	if( x->l_obj.z_disabled || x->error ) // if object is disabled
+		goto zero;
 	if(x->sym_arr->size() < 1 || x->go == false) {
 		buffer = NULL;
 		goto zero;
@@ -309,8 +318,9 @@ void *biddler_new( t_symbol *s, long chan ) {
 	outlet_new((t_pxobject *)x, "signal");
 	
 	x->sym_arr = new std::vector<t_symbol *>;
-	if(x->sym_arr == NULL)
-		error("biddler~: memory error");
+	if(x->sym_arr == NULL) {
+		biddler_error(x, "biddler~: memory error");
+	}
 
 	clock_init(&x->q_clock);
 	clock_init(&x->measure_clock);
@@ -321,6 +331,7 @@ void *biddler_new( t_symbol *s, long chan ) {
 	x->follow = false;
 	x->go = true;
 	x->update_q_clock = 0;
+	x->error = 0;
 
 	biddler_reset_state(x);
 
@@ -328,8 +339,15 @@ void *biddler_new( t_symbol *s, long chan ) {
 }
 
 void biddler_free( t_biddler *x ) {
-	delete x->sym_arr;
+	if(x->sym_arr) 
+		delete x->sym_arr;
 	dsp_free( (t_pxobject *)x );			// msp free function
+}
+
+void biddler_error(t_biddler *x, char *s) {
+	if(x->error == 0)
+		error(s);
+	x->error = 1;
 }
 
 void biddler_reset_state(t_biddler *x) {
@@ -342,6 +360,10 @@ void biddler_reset_state(t_biddler *x) {
 
 void biddler_add( t_biddler *x, t_symbol *s ) { // sets the buffer~ to access
 	t_buffer *b;					// pointer to a buffer
+
+	if(x->error)
+		return;
+
 	post("add buffer");
 	if(x->filter)
 		if( std::string(x->filter->s_name) == std::string(s->s_name) )
@@ -353,11 +375,14 @@ void biddler_add( t_biddler *x, t_symbol *s ) { // sets the buffer~ to access
 			x->filter = s;
     }
 	else {
-		error( "biddler~: no buffer~ %s", s->s_name ); // throw error
+		biddler_error(x, "biddler~: invalid buffer added");
     }
 }
 
 /*void biddler_clear( t_biddler *x) {
+	if(x->error)
+		return;
+
 	post("clear all buffers");
 	//biddler_reset_state(x);
 	x->sym_arr->clear();
@@ -440,6 +465,9 @@ void biddler_assist( t_biddler *x, void *b, long m, long a, char *s ) {
 
 void increment_buffer(t_biddler *x) {
 	//todo: check for bad ptrs so we can handle the disappearance of buffers
+
+	if(x->error)
+		return;
 
 	for(int i = 0; i < abs(x->measure_index_offset); i++) {
 		if(x->measure_index_offset >= 0) {
